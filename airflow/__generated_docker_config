@@ -1,0 +1,102 @@
+name: dataeng
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_USER: airflow
+    image: postgres:14.0
+    networks:
+      airflow-network: null
+  scheduler:
+    build:
+      context: /root/data-eng/airflow-spark-latest/airflow
+      dockerfile: Dockerfile
+    command:
+      - bash
+      - -c
+      - airflow db migrate && airflow users create --username admin --firstname Yusuf --lastname Ganiyu --role Admin --email airscholar@gmail.com --password admin && airflow scheduler
+    depends_on:
+      postgres:
+        condition: service_started
+        required: true
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: 46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      AIRFLOW__WEBSERVER_BASE_URL: http://localhost:8080
+    networks:
+      airflow-network: null
+    volumes:
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/jobs
+        target: /opt/airflow/jobs
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/dags
+        target: /opt/airflow/dags
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/logs
+        target: /opt/airflow/logs
+        bind:
+          create_host_path: true
+  webserver:
+    build:
+      context: /root/data-eng/airflow-spark-latest/airflow
+      dockerfile: Dockerfile
+    command:
+      - webserver
+    depends_on:
+      scheduler:
+        condition: service_started
+        required: true
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: 46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      AIRFLOW__WEBSERVER_BASE_URL: http://localhost:8080
+    networks:
+      airflow-network: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/jobs
+        target: /opt/airflow/jobs
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/dags
+        target: /opt/airflow/dags
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/airflow/logs
+        target: /opt/airflow/logs
+        bind:
+          create_host_path: true
+networks:
+  airflow-network:
+    name: dataeng_airflow-network
+x-airflow-common:
+  build:
+    context: .
+    dockerfile: Dockerfile
+  depends_on:
+    - postgres
+  env_file:
+    - airflow.env
+  networks:
+    - airflow-network
+  volumes:
+    - ./jobs:/opt/airflow/jobs
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs

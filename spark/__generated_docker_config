@@ -1,0 +1,96 @@
+name: dataeng
+services:
+  spark-master:
+    command:
+      - bin/spark-class
+      - org.apache.spark.deploy.master.Master
+    image: bitnami/spark:latest
+    networks:
+      spark-network: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "9090"
+        protocol: tcp
+      - mode: ingress
+        target: 7077
+        published: "7077"
+        protocol: tcp
+      - mode: ingress
+        target: 4040
+        published: "4040"
+        protocol: tcp
+      - mode: ingress
+        target: 4041
+        published: "4041"
+        protocol: tcp
+      - mode: ingress
+        target: 4042
+        published: "4042"
+        protocol: tcp
+      - mode: ingress
+        target: 4043
+        published: "4043"
+        protocol: tcp
+      - mode: ingress
+        target: 4044
+        published: "4044"
+        protocol: tcp
+      - mode: ingress
+        target: 4045
+        published: "4045"
+        protocol: tcp
+      - mode: ingress
+        target: 4046
+        published: "4046"
+        protocol: tcp
+      - mode: ingress
+        target: 4047
+        published: "4047"
+        protocol: tcp
+      - mode: ingress
+        target: 4048
+        published: "4048"
+        protocol: tcp
+      - mode: ingress
+        target: 4049
+        published: "4049"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/spark/jobs
+        target: /opt/bitnami/spark/jobs
+        bind:
+          create_host_path: true
+  spark-worker:
+    command:
+      - bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - spark://spark-master:7077
+    depends_on:
+      spark-master:
+        condition: service_started
+        required: true
+    environment:
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: 1g
+    image: bitnami/spark:latest
+    networks:
+      spark-network: null
+    volumes:
+      - type: bind
+        source: /root/data-eng/airflow-spark-latest/spark/jobs
+        target: /opt/bitnami/spark/jobs
+        bind:
+          create_host_path: true
+networks:
+  spark-network:
+    name: dataeng_spark-network
+x-spark-common:
+  image: bitnami/spark:latest
+  networks:
+    - spark-network
+  volumes:
+    - ./jobs:/opt/bitnami/spark/jobs
